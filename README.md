@@ -104,4 +104,4 @@ curl http://localhost:8083
 Repeat the command multiple times and confirm the X-Served-By response header alternates between web01 and web02.
 
 ![screenshot](Web-01.jpg)
-![screenshot](Web-02.jpg)
+![Web-02](https://github.com/user-attachments/assets/0ede0920-de5c-4260-b91e-8b42ce6fa87f)
