@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Food Nutrition Finder</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    margin: 0;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #222;
+    min-height: 100vh;
+  }
+  h1 {
+    color: #2a7a59;
+    margin-bottom: 1.5rem;
+    text-shadow: 1px 1px 2px #a1c298;
+  }
+  form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  input[type="text"] {
+    padding: 0.6rem;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    border: 2px solid #2a7a59;
+    width: 280px;
+    transition: border-color 0.3s;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: #14532d;
+  }
+  button {
+    padding: 0.6rem 1.2rem;
+    font-size: 1.1rem;
+    background: #2a7a59;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(42, 122, 89, 0.4);
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background: #14532d;
+  }
+  .result {
+    background: white;
+    padding: 1.6rem 2rem;
+    border-radius: 15px;
+    max-width: 450px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    width: 100%;
+  }
+  .result h2 {
+    margin-top: 0;
+    color: #276749;
+    text-align: center;
+    margin-bottom: 1rem;
+    text-transform: capitalize;
+  }
+  .nutrient-list {
+    list-style: none;
+    padding-left: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 1.4rem;
+  }
+  .nutrient-list li {
+    padding: 6px 0;
+    border-bottom: 1px solid #ddd;
+  }
+  .summary {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #2a7a59;
+    text-align: center;
+  }
+  .error {
+    color: #d32f2f;
+    margin-top: 1rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<h1>Food Nutrition Finder</h1>
+
+<form id="foodForm">
+  <input type="text" id="foodInput" placeholder="Enter food or fruit name e.g. banana" required />
+  <button type="submit">Search</button>
+</form>
+
+<div id="result" class="result" style="display:none;">
+  <h2 id="foodName"></h2>
+  <ul id="nutrientList" class="nutrient-list"></ul>
+  <p id="summary" class="summary"></p>
+</div>
+
+<div id="error" class="error"></div>
+
+<script>
+  const form = document.getElementById('foodForm');
+  const resultDiv = document.getElementById('result');
+  const foodNameEl = document.getElementById('foodName');
+  const nutrientList = document.getElementById('nutrientList');
+  const summaryEl = document.getElementById('summary');
+  const errorDiv = document.getElementById('error');
+
+  function isPremiumText(value) {
+    if (typeof value !== 'string') return false;
+    return value.toLowerCase().includes('only available for premium subscribers');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorDiv.textContent = '';
+    nutrientList.innerHTML = '';
+    summaryEl.textContent = '';
+    resultDiv.style.display = 'none';
+
+    const foodName = document.getElementById('foodInput').value.trim();
+    if (!foodName) return;
+
+    const headers = {
+      'x-rapidapi-key': '7a7dc2a7cfmshc8ef9704ee210fep1dd792jsnd35726d4cc8c',
+      'x-rapidapi-host': 'nutrition-by-api-ninjas.p.rapidapi.com'
+    };
+
+    const url = `https://nutrition-by-api-ninjas.p.rapidapi.com/v1/nutrition?query=${encodeURIComponent(foodName)}`;
+
+    try {
+      const response = await fetch(url, { method: 'GET', headers });
+      if (!response.ok) throw new Error('Food not found or API error');
+      const data = await response.json();
+
+      if (!data.length) {
+        errorDiv.textContent = 'Food not found. Please try another item.';
+        return;
+      }
+
+      const foodData = data[0];
+      foodNameEl.textContent = foodData.name;
+
+      // Create nutrient list entries as strings, handling premium text
+      // Some nutrients might be missing so fallback to "N/A"
+      const nutrientsRaw = {
+        Calories: foodData.calories !== undefined ? String(foodData.calories) : 'N/A',
+        Protein: foodData.protein_g !== undefined ? String(foodData.protein_g) : 'N/A',
+        Fat: foodData.fat_total_g !== undefined ? String(foodData.fat_total_g) : 'N/A',
+        Carbohydrates: foodData.carbohydrates_total_g !== undefined ? String(foodData.carbohydrates_total_g) : 'N/A',
+        Fiber: foodData.fiber_g !== undefined ? String(foodData.fiber_g) : 'N/A',
+        Sugar: foodData.sugar_g !== undefined ? String(foodData.sugar_g) : 'N/A'
+      };
+
+      // Filter out premium nutrient values
+      const nutrientsFiltered = Object.entries(nutrientsRaw)
+        .filter(([_, val]) => !isPremiumText(val) && val !== 'N/A' && val !== '0');
+
+      // Display nutrient list
+      if (nutrientsFiltered.length === 0) {
+        errorDiv.textContent = 'No nutrient data available without premium access.';
+        return;
+      }
+
+      nutrientsFiltered.forEach(([label, val]) => {
+        const unit = (label === 'Calories') ? 'kcal' : 'g';
+        const li = document.createElement('li');
+        li.textContent = `${label}: ${val} ${unit}`;
+        nutrientList.appendChild(li);
+      });
+
+      // Find highest nutrient by numeric value among filtered nutrients
+      let highest = nutrientsFiltered[0];
+      nutrientsFiltered.forEach(n => {
+        if (parseFloat(n[1]) > parseFloat(highest[1])) highest = n;
+      });
+
+      summaryEl.textContent = `When you eat ${foodData.name} every day, you will get so much ${highest[0].toLowerCase()}.`;
+
+      resultDiv.style.display = 'block';
+
+    } catch (err) {
+      console.error(err);
+      errorDiv.textContent = 'Could not fetch nutrition data. Please try again.';
+    }
+  });
+</script>
+
+</body>
+</html>
